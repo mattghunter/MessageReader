@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+	   					   http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/integration
+                           http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+    <!--Application Beans-->
+    <bean id="MessageRouter" class="scalaMessageReader.MessageRouter"/>
+    <bean id="FileToMapConverter" class="scalaMessageReader.FileToMapConverter"/>
+    <bean id="StatusMessageMonitor" class="scalaMessageReader.monitor.StatusMessageMonitor"/>
+    <bean id="StatusMonitorStrategy" class="scalaMessageReader.monitor.StatusMonitorStrategy"/>
+    <bean id="NotificationPublisher" class="scalaMessageReader.NotificationPublisher"/>
+
+    <int:service-activator input-channel="InputToConverterChannel" ref="FileToMapConverter" method="convert"
+                           output-channel="ConverterToRouterChannel"/>
+    <int:router input-channel="ConverterToRouterChannel" ref="MessageRouter" method="route"
+                default-output-channel="errorChannel"/>
+    <int:service-activator input-channel="RouterToStatusMonitorChannel" ref="StatusMessageMonitor" method="monitor">
+        <property name="statusMonitorStrategy" ref="StatusMonitorStrategy"/>
+        <property name="notificationPublisher" ref="NotificationPublisher"/>
+    </int:service-activator>
+
+    <!--Results Beans-->
+    <bean id="MessageEndpoint" class="scalaMessageReader.endpoint.OutputToCSVExporter"/>
+
+    <int:service-activator input-channel="PublisherToOutputChannel" ref="MessageEndpoint" method="handleMessage"/>
+
+    <!--MessageChannels-->
+    <bean id="InputToConverterChannel" class = "org.springframework.integration.channel.DirectChannel"/>
+    <bean id="ConverterToRouterChannel" class = "org.springframework.integration.channel.DirectChannel"/>
+    <bean id="RouterToStatusMonitorChannel" class = "org.springframework.integration.channel.DirectChannel"/>
+    <bean id="RouterToTimerMonitorChannel" class="org.springframework.integration.channel.DirectChannel"/>
+    <bean id="PublisherToOutputChannel" class="org.springframework.integration.channel.DirectChannel"/>
+
+    <!--HeartBeat-->
+    <!--<bean id="HeartbeatJob"-->
+          <!--class = "org.springframework.scheduling.quartz.JobDetailFactoryBean">-->
+        <!--<property name="jobClass" value="messageReader.heartbeat.HeartbeatJob"/>-->
+    <!--</bean>-->
+    <!--<bean id = "HeartBeatTrigger" class = "org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">-->
+        <!--<property name="jobDetail" ref = "HeartbeatJob"/>-->
+        <!--<property name="repeatInterval" value="10000"/> &lt;!&ndash;Scheduled Interval in Milliseconds&ndash;&gt;-->
+        <!--<property name="startDelay" value="3000"/>  &lt;!&ndash;StartTime Delay in Milliseconds&ndash;&gt;-->
+    <!--</bean>-->
+    <!--<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">-->
+        <!--<property name="triggers">-->
+            <!--<list>-->
+                <!--<ref bean="HeartBeatTrigger"/>-->
+            <!--</list>-->
+        <!--</property>-->
+    <!--</bean>-->
+</beans>
